@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Tasks template for modernization plan. Generate this file alongside plan.md to track individual migration tasks.",
+  "tasks": [
+    {
+      "type": "security",
+      "id": "001-security-cve-remediation",
+      "description": "Scan project dependencies for known vulnerabilities and remediate identified CVEs.",
+      "reason": "Security validation is required before Azure deployment to reduce known dependency risks.",
+      "requirements": "Upgrade vulnerable dependencies to minimum patched versions. If a major-version upgrade is required, document impact and breaking-change risk. Validate project build and existing tests after remediation.",
+      "environmentConfiguration": "Use the existing .NET Framework/MSBuild project environment already defined in the repository.",
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "deployment",
+      "id": "002-deployment-azure-container-apps",
+      "description": "Deploy the application to Azure Container Apps, including required containerization flow.",
+      "reason": "The modernization objective is Azure adoption with a cloud-hosted deployment target.",
+      "requirements": "Package the application for container-based deployment and deploy to Azure Container Apps using existing or pre-created Azure resources. Use managed identity-based authentication where applicable.",
+      "dependencies": [
+        "001-security-cve-remediation"
+      ],
+      "targetAzureService": "Azure Container Apps",
+      "resourceStatus": "existing",
+      "deploymentTool": "bicep",
+      "skills": [
+        {
+          "name": "azcli-containerapp-deploy",
+          "location": "builtin"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "planName": "modernization-plan",
+    "projectName": "mnm-ZavaRiskEngine",
+    "language": "dotnet",
+    "createdAt": "2026-05-29T00:46:15Z",
+    "version": "1.0"
+  }
+}
