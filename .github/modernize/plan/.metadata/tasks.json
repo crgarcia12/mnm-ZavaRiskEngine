@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Tasks template for modernization plan. Generate this file alongside plan.md to track individual migration tasks.",
+  "metadata": {
+    "planName": "plan",
+    "projectName": "ZavaRiskEngine",
+    "language": "dotnet",
+    "createdAt": "2026-05-29T07:53:39Z",
+    "version": "1.0"
+  },
+  "tasks": [
+    {
+      "type": "upgrade",
+      "id": "001-upgrade-dotnet",
+      "description": "Upgrade the project from .NET Framework 4.8 to .NET 10 (latest LTS), converting the legacy non-SDK-style csproj to SDK-style format and replacing deprecated hosting/WCF components with modern .NET equivalents.",
+      "reason": "The project targets .NET Framework 4.8 with a legacy non-SDK-style project file. The user has explicitly requested modernization to the latest framework. Upgrading to .NET 10 is required before applying Azure SDK integrations (which target netstandard2.0+) and enables SDK-style project format needed for modern tooling.",
+      "requirements": "Upgrade from .NET Framework 4.8 to .NET 10 (net10.0). Convert the project file from legacy non-SDK style to SDK-style csproj. Migrate the WCF service interface and hosting to a modern .NET 10 API (e.g., minimal API or ASP.NET Core). Ensure the project builds and all existing logic is preserved.",
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "transform",
+      "id": "002-transform-sql-to-azure-sql",
+      "description": "Migrate the SQL Server database integration from username/password credentials to Azure SQL Database with Managed Identity (passwordless) authentication.",
+      "reason": "The application currently connects to SQL Server using hard-coded username/password credentials in web.config and DbConfig.cs. Migrating to Azure SQL Database with Managed Identity eliminates the need for credentials in configuration, improving security and enabling cloud-native passwordless authentication.",
+      "requirements": "Replace the existing SQL Server connection string (using User Id/Password) with an Azure SQL Database connection using Managed Identity (DefaultAzureCredential). Update the database client code (System.Data.SqlClient or Microsoft.Data.SqlClient) to use the Azure Identity SDK for authentication. Remove credentials from configuration files.",
+      "dependencies": ["001-upgrade-dotnet"],
+      "skills": [
+        {
+          "name": "migration-azure-sql-database",
+          "location": "builtin"
+        }
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "transform",
+      "id": "003-transform-console-logging",
+      "description": "Configure console logging for the application so that log output is correctly captured by Azure Container Apps and Azure Monitor log aggregation.",
+      "reason": "The application uses legacy ASP.NET/WCF diagnostics that are not optimized for container and cloud environments. Configuring console (stdout/stderr) logging ensures logs are properly captured by Azure's log aggregation infrastructure when deployed to Azure Container Apps.",
+      "requirements": "Configure the application to emit structured or plain-text logs to stdout/stderr using the console logging provider suitable for cloud and container environments. Ensure log levels are configurable via environment variables or configuration files.",
+      "dependencies": ["001-upgrade-dotnet"],
+      "skills": [
+        {
+          "name": "migration-console-logging",
+          "location": "builtin"
+        }
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "security",
+      "id": "004-security-cve-remediation",
+      "description": "Scan all project dependencies for known CVEs and remediate any identified vulnerabilities to ensure the application is secure before deployment.",
+      "reason": "Security scanning and CVE remediation is a mandatory step in every modernization plan. The upgraded .NET 10 project and its dependencies must be free of known vulnerabilities before deployment to Azure.",
+      "requirements": "Upgrade vulnerable dependencies to the minimum patched version. If a CVE fix requires a major version upgrade, document the affected dependency, the current version, the upgraded major version, and the breaking change risk. Verify that the project builds and all tests pass after remediation.",
+      "dependencies": ["001-upgrade-dotnet", "002-transform-sql-to-azure-sql", "003-transform-console-logging"],
+      "skills": [
+        {
+          "name": "validate-cves-and-fix",
+          "location": "builtin"
+        }
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "deployment",
+      "id": "005-deployment-azure-container-apps",
+      "description": "Containerize the modernized .NET 10 application and deploy it to Azure Container Apps.",
+      "reason": "The user has requested deployment to Azure. Azure Container Apps is the default deployment target and provides a fully managed, serverless container hosting environment suitable for the risk engine service.",
+      "requirements": "Containerize the .NET 10 application using a multi-stage Dockerfile. Deploy the container image to Azure Container Apps. Configure Managed Identity for the running container so that all Azure service integrations (Azure SQL Database) use passwordless authentication. Ensure the health endpoint remains accessible.",
+      "dependencies": ["004-security-cve-remediation"],
+      "targetAzureService": "Azure Container Apps",
+      "resourceStatus": "Create new resource",
+      "deploymentTool": "bicep",
+      "skills": [
+        {
+          "name": "azcli-containerapp-deploy",
+          "location": "builtin"
+        }
+      ]
+    }
+  ]
+}
