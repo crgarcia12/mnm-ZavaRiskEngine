@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "description": "Tasks template for modernization plan. Generate this file alongside plan.md to track individual migration tasks.",
+  "tasks": [
+    {
+      "type": "transform",
+      "id": "001-transform-convert-dotnet-to-python",
+      "description": "Convert the ZavaRiskEngine from a .NET Framework 4.8 WCF SOAP service to a Python REST API with equivalent business logic.",
+      "reason": "The application is built on legacy .NET Framework 4.8 WCF technology which is not cross-platform and has limited cloud-native support. Converting to Python enables modern tooling, simpler containerization, and easier maintenance.",
+      "requirements": "Rewrite the three WCF service operations (ScoreLoanApplication, GetRiskFactors, UpdateRiskModel) as REST API endpoints in Python. Preserve all existing business logic including the risk scoring algorithm, normalization functions, rating thresholds, and approval multipliers. Replace System.Data.SqlClient with a Python SQL Server driver. Replace WCF SOAP contracts with Python data models. Replace web.config connection string configuration with environment-variable-based configuration (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD). Maintain the /health endpoint. Use Managed Identity for Azure SQL Database authentication when deployed.",
+      "skills": [],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "transform",
+      "id": "002-transform-icon-to-unicorn",
+      "description": "Change the application icon and branding to feature a unicorn.",
+      "reason": "The user explicitly requested the application icon be changed to a unicorn as part of the modernization.",
+      "requirements": "Replace the application's icon/favicon and any branding assets with a unicorn-themed icon. Update any default landing page (equivalent of Default.aspx) to display the unicorn icon. Ensure the icon is included in the containerized application.",
+      "skills": [],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "security",
+      "id": "003-security-cve-remediation",
+      "description": "Scan all Python project dependencies for known CVEs and remediate any identified vulnerabilities.",
+      "reason": "Security scanning ensures the modernized application is free of known vulnerabilities before deployment to Azure.",
+      "requirements": "Upgrade vulnerable dependencies to the minimum patched version. If a CVE fix requires a major version upgrade, document the affected dependency, current version, upgraded version, and breaking change risk. Verify the project builds and all tests pass after remediation.",
+      "dependencies": ["001-transform-convert-dotnet-to-python", "002-transform-icon-to-unicorn"],
+      "skills": [
+        {
+          "name": "validate-cves-and-fix",
+          "location": "builtin"
+        }
+      ],
+      "successCriteria": {
+        "passBuild": "true",
+        "generateNewUnitTests": "false",
+        "passUnitTests": "true"
+      }
+    },
+    {
+      "type": "deployment",
+      "id": "004-deployment-azure-container-apps",
+      "description": "Containerize and deploy the Python ZavaRiskEngine service to Azure Container Apps.",
+      "reason": "The user requested deployment to Azure. Azure Container Apps is the default target and handles containerization, scaling, and managed infrastructure.",
+      "requirements": "Create a Dockerfile for the Python application. Provision Azure Container Apps resources and deploy the containerized service. Configure Managed Identity for secure access to Azure SQL Database. Set required environment variables (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD or equivalent Managed Identity configuration). Expose the REST API and health endpoint.",
+      "dependencies": ["003-security-cve-remediation"],
+      "targetAzureService": "Azure Container Apps",
+      "resourceStatus": "Create new resource",
+      "deploymentTool": "bicep",
+      "skills": [
+        {
+          "name": "azcli-containerapp-deploy",
+          "location": "builtin"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "planName": "plan",
+    "projectName": "ZavaRiskEngine",
+    "language": "dotnet",
+    "createdAt": "2026-06-04T00:38:32.192Z",
+    "version": "1.0"
+  }
+}
