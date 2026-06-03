@@ -1,15 +1,24 @@
-FROM mono:6.12
-RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
-    sed -i '/buster-updates/d' /etc/apt/sources.list && \
-    sed -i 's|security.debian.org/debian-security|archive.debian.org/debian-security|g' /etc/apt/sources.list && \
-    apt-get update && apt-get install -y --no-install-recommends mono-xsp4 && rm -rf /var/lib/apt/lists/*
+FROM python:3.13-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        gnupg2 \
+        unixodbc-dev && \
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg && \
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/12/prod bookworm main" > /etc/apt/sources.list.d/mssql-release.list && \
+    apt-get update && \
+    ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
 COPY . .
-RUN mkdir -p bin && mcs -target:library -out:bin/ZavaRiskEngine.dll \
-    -reference:System.dll -reference:System.Web.dll -reference:System.Data.dll \
-    -reference:System.Configuration.dll -reference:System.Web.Extensions.dll \
-    -reference:System.Xml.dll -reference:System.Xml.Linq.dll -reference:System.Net.Http.dll \
-    -reference:System.ServiceModel.dll -reference:System.Runtime.Serialization.dll \
-    $(find . -name "*.cs" -not -path "./obj/*")
+
 EXPOSE 8080
-CMD ["xsp4", "--port", "8080", "--address", "0.0.0.0", "--nonstop"]
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
